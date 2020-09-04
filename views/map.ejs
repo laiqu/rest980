@@ -17,6 +17,7 @@ var updateEvery = <%=mapvalues.pointIntervalMs%>;
   <button type="button" class='btn btn-info action' data-action='/api/local/info/sys'>Test Sys</button>
   <a type="button" class='btn btn-warning' id='download' onclick='downloadCanvas();'>Download Image</a>
   <button type="button" class='btn btn-danger' onclick='clearMap();'>Clear map</button>
+  <button type="button" class='btn btn-info' onclick='resetMap();'>Reset (doesn't wokr)</button> <span class=''></span>
   <button type="button" class='btn btn-danger' onclick='toggleMapping();'>Start/Stop mapping</button> <span class='' id='mapStatus'></span>
   <div>
     Update every: <input type='text' id='updateevery' size='5' value=''/>ms.
@@ -24,36 +25,34 @@ var updateEvery = <%=mapvalues.pointIntervalMs%>;
     Offsets: x:<input type='text' class='metrics' id='offsetx' size='5' value=''/> y:<input class='metrics' type='text' id='offsety' size='5' value=''/> <button type="button" onclick='saveValues();'>Save values</button>
   </div>
 
+  Last point: <span class='data' id='last'></span>
+  Mission Time: <span class='data' id='mission'></span>min
+  Mission: <span class='data' id='nMssn'></span>
+  <span id='binRow'>Bin present: <span class='data' id='bin'></span></span>
+  <span id='detectedPadRow'>Detected pad: <span class='data' id='detectedPad'></span></span>
+  <span id='tankPresentRow'>Tank present: <span class='data' id='tankPresent'></span></span>
+  <span id='lidClosedRow'>Lid closed: <span class='data' id='lidClosed'></span></span>
+  Cycle: <span class='data' id='cycle'></span>
+  Phase: <span class='data' id='phase'></span>
+  Flags: <span class='data' id='flags'></span>
+  Battery: <span class='data' id='batPct'></span>%
+  Error: <span class='data' id='error'></span>
+  Sqft: <span class='data' id='sqft'></span>
+  expireM: <span class='data' id='expireM'></span>min
+  rechrgM: <span class='data' id='rechrgM'></span>min
+  notReady: <span class='data' id='notReady'></span>
+  theta: <span class='data' id='theta'></span>
+  x: <span class='data' id='x'></span>
+  y: <span class='data' id='y'></span>
   <div>Command response: <div id='apiresponse'>ok</div></div>
 
-  <div style="position: relative;">
-    <canvas id="path_layer"  style="position: absolute; left: 0; top: 0; z-index: 0; border:1px solid #d3d3d3;"></canvas>
-    <canvas id="robot_body_layer" style="position: absolute; left: 0; top: 0; z-index: 1; border:1px solid #d3d3d3;"></canvas>
-    <canvas id="text_layer" style="position: absolute; left: 0; top: 0; z-index: 2; border:1px solid #d3d3d3;"></canvas>
-  </div>
 </div>
+    <svg id="path_layer" width = "100%" height = "100%">
+      <g>
+        <path/>
+      </g>
+    </svg>
 
-<div style='float:right'>
-  Last point: <span class='data' id='last'></span><br/>
-  Mission Time: <span class='data' id='mission'></span>min<br/>
-  Mission: <span class='data' id='nMssn'></span><br/>
-  <span id='binRow'>Bin present: <span class='data' id='bin'></span><br/></span>
-  <span id='detectedPadRow'>Detected pad: <span class='data' id='detectedPad'></span><br/></span>
-  <span id='tankPresentRow'>Tank present: <span class='data' id='tankPresent'></span><br/></span>
-  <span id='lidClosedRow'>Lid closed: <span class='data' id='lidClosed'></span><br/></span>
-  Cycle: <span class='data' id='cycle'></span><br/>
-  Phase: <span class='data' id='phase'></span><br/>
-  Flags: <span class='data' id='flags'></span><br/>
-  Battery: <span class='data' id='batPct'></span>%<br/>
-  Error: <span class='data' id='error'></span><br/>
-  Sqft: <span class='data' id='sqft'></span><br/>
-  expireM: <span class='data' id='expireM'></span>min<br/>
-  rechrgM: <span class='data' id='rechrgM'></span>min<br/>
-  notReady: <span class='data' id='notReady'></span><br/>
-  theta: <span class='data' id='theta'></span><br/>
-  x: <span class='data' id='x'></span><br/>
-  y: <span class='data' id='y'></span><br/>
-</div>
 
 <script src="/js/map.js"></script>
 

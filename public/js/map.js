@@ -6,29 +6,20 @@
 window.onload = startApp;
 
 var pathLayerContext;
-var robotBodyLayerContext;
-var textLayerContext;
 
 var pathLayer;
-var robotBodyLayer;
-var textLayer;
 
 var lastPhase = '';
 var mapping = true;
 
+var currentPoints = [];
+var zoom;
+
 function startApp () {
   pathLayer = document.getElementById('path_layer');
-  robotBodyLayer = document.getElementById('robot_body_layer');
-  textLayer = document.getElementById('text_layer');
 
   pathLayer.width = sizeX;
   pathLayer.height = sizeY;
-
-  robotBodyLayer.width = sizeX;
-  robotBodyLayer.height = sizeY;
-
-  textLayer.width = sizeX;
-  textLayer.height = sizeY;
 
   $('#sizew').val(sizeX);
   $('#sizeh').val(sizeY);
@@ -39,14 +30,15 @@ function startApp () {
   $('#updateevery').val(updateEvery);
   startMissionLoop();
 
-  pathLayerContext = pathLayer.getContext('2d');
-  robotBodyLayerContext = robotBodyLayer.getContext('2d');
-  textLayerContext = textLayer.getContext('2d');
+  currentPoints = fetchExistingPoints();
 
-  pathLayerContext.beginPath();
-  pathLayerContext.lineWidth = 1;
-  pathLayerContext.strokeStyle = '#000000';
-  pathLayerContext.lineCap = 'round';
+  zoom = d3.zoom()
+      .extent([[0, 0], [sizeX, sizeY]])
+      .scaleExtent([-8, 8])
+      .on("zoom", function () {
+        d3.select('g').attr('transform', d3.event.transform);
+      });
+  d3.select('svg').call(zoom);
 }
 
 function startMissionLoop () {
@@ -100,13 +92,48 @@ function messageHandler (msg) {
   );
 }
 
+function fetchExistingPoints() {
+  return JSON.parse(localStorage.getItem('points') || '[]');
+}
+
+function packagePoint(x, y) {
+  return [x, y];
+}
+
+function storePoints() {
+  window.localStorage.setItem('points', JSON.stringify(currentPoints));
+}
+
+function update() {
+  var lineGenerator = d3.line();
+  var pathString = lineGenerator(currentPoints);
+  d3.select('path').attr('d', pathString);
+}
+
+function resetMap() {
+  //TODO
+}
+
 function drawStep (x, y, theta, cycle, phase) {
   if (phase === 'charge') {
     // hack (getMission() dont send x,y if phase is diferent as run)
     x = 0;
     y = 0;
+  } else {
+    currentPoints.push(packagePoint(x, y));
+    storePoints();
   }
+  update();
+  //drawRobotBody(x, y, theta);
 
+  // draw changes in status with text.
+  if (phase !== lastPhase) {
+    lastPhase = phase;
+  } else {
+  }
+}
+
+function rawPointsToMap(x, y) {
   x = parseInt(x, 10) + xOffset;
   y = parseInt(y, 10) + yOffset;
   var oldX = x;
@@ -115,19 +142,11 @@ function drawStep (x, y, theta, cycle, phase) {
   x = y;
   y = pathLayer.height - oldX;
   x = pathLayer.width - x;
+  return packagePoint(x, y);
+}
 
-  drawRobotBody(x, y, theta);
-
-  // draw changes in status with text.
-  if (phase !== lastPhase) {
-    textLayerContext.font = 'normal 12pt Calibri';
-    textLayerContext.fillStyle = 'blue';
-    textLayerContext.fillText(phase, x, y);
-    lastPhase = phase;
-  } else {
-    pathLayerContext.lineTo(x, y);
-    pathLayerContext.stroke();
-  }
+function deduceCanvas() {
+  // TODO(kkr):
 }
 
 function drawRobotBody (x, y, theta) {
@@ -155,10 +174,8 @@ function drawRobotBody (x, y, theta) {
 
 function clearMap () {
   lastPhase = '';
-  pathLayerContext.clearRect(0, 0, pathLayer.width, pathLayer.height);
-  robotBodyLayerContext.clearRect(0, 0, robotBodyLayer.width, robotBodyLayer.height);
-  textLayerContext.clearRect(0, 0, textLayer.width, textLayer.height);
-  pathLayerContext.beginPath();
+  currentPoints.splice(0, currentPoints.length);
+  window.localStorage.clear();
 }
 
 function toggleMapping () {
@@ -210,42 +227,22 @@ $('.metrics').on('change', function () {
   var h = getValue('#sizeh', pathLayer.height);
   if (pathLayer.width !== w) {
     pathLayerContext.beginPath();
-    shiftCanvas(textLayerContext, w, h, (w - pathLayer.width), 0);
     shiftCanvas(pathLayerContext, w, h, (w - pathLayer.width), 0);
-    var imgDataW = pathLayerContext.getImageData(0, 0, pathLayer.width, pathLayer.height);
-    var imgDataT1 = textLayerContext.getImageData(0, 0, textLayer.width, textLayer.height);
     pathLayer.width = w;
     robotBodyLayer.width = w;
-    textLayer.width = w;
-    pathLayerContext.putImageData(imgDataW, 0, 0);
-    textLayerContext.putImageData(imgDataT1, 0, 0);
   }
 
   if (pathLayer.height !== h) {
-    pathLayerContext.beginPath();
-    shiftCanvas(textLayerContext, w, h, 0, (h - pathLayer.height));
     shiftCanvas(pathLayerContext, w, h, 0, (h - pathLayer.height));
-    var imgDataH = pathLayerContext.getImageData(0, 0, pathLayer.width, pathLayer.height);
-    var imgDataT2 = textLayerContext.getImageData(0, 0, textLayer.width, textLayer.height);
     pathLayer.height = h;
-    robotBodyLayer.height = h;
-    textLayer.height = h;
-    pathLayerContext.putImageData(imgDataH, 0, 0);
-    textLayerContext.putImageData(imgDataT2, 0, 0);
   }
 
   var newYOffset = getValue('#offsety', yOffset);
   if (newYOffset !== yOffset) {
-    pathLayerContext.beginPath();
-    shiftCanvas(pathLayerContext, w, h, (yOffset - newYOffset), 0);
-    shiftCanvas(textLayerContext, w, h, (yOffset - newYOffset), 0);
     yOffset = newYOffset;
   }
   var newXOffset = getValue('#offsetx', xOffset);
   if (newXOffset !== xOffset) {
-    pathLayerContext.beginPath();
-    shiftCanvas(pathLayerContext, w, h, 0, (xOffset - newXOffset));
-    shiftCanvas(textLayerContext, w, h, 0, (xOffset - newXOffset));
     xOffset = newXOffset;
   }
 });
