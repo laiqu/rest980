@@ -29,71 +29,74 @@ function startApp () {
 
   $('#updateevery').val(updateEvery);
   startMissionLoop();
+  update();
 
-  currentPoints = fetchExistingPoints();
+}
 
-  zoom = d3.zoom()
+function startMissionLoop () {
+  $.get('/api/latestMission', function (data) {
+    if (data.length !== 0) {
+      messageHandler(JSON.parse(data));
+    }
+    fetchExistingPointsAndLoadMap();
+    setTimeout(startMissionLoop, updateEvery);
+  });
+}
+
+function messageHandler (msg) {
+  if (msg.length === 0) return;
+  // msg is the object returned by dorita980.getMission() promise.
+  /*
+  if (msg.cleanMissionStatus) {
+    // firmware version 2
+    msg = msg.cleanMissionStatus;
+    msg.pos = msg.pose;
+    msg.batPct = msg.batPct;
+    if (msg.bin) { $('#bin').html(msg.bin.present); $('#binRow').show(); } else { $('#binRow').hide(); }
+    if (msg.detectedPad) { $('#detectedPad').html(msg.detectedPad); $('#detectedPadRow').show(); } else { $('#detectedPadRow').hide(); }
+    if (msg.mopReady) { $('#tankPresent').html(msg.mopReady.tankPresent); $('#tankPresentRow').show(); } else { $('#tankPresentRow').hide(); }
+    if (msg.mopReady) { $('#lidClosed').html(msg.mopReady.lidClosed); $('#lidClosedRow').show(); } else { $('#lidClosedRow').hide(); }
+    $('#nMssn').html(msg.nMssn);
+  }*/
+  msg.time = new Date().toISOString();
+  $('#mapStatus').html('drawing...');
+  $('#last').html(msg.time);
+  $('#mission').html(msg.mssnM);
+  $('#cycle').html(msg.cycle);
+  $('#phase').html(msg.phase);
+  $('#flags').html(msg.flags);
+  $('#batPct').html(msg.batPct);
+  $('#error').html(msg.error);
+  $('#sqft').html(msg.sqft);
+  $('#expireM').html(msg.expireM);
+  $('#rechrgM').html(msg.rechrgM);
+  $('#notReady').html(msg.notReady);
+  $('#theta').html(msg.pose.theta);
+  $('#x').html(msg.pose.point.x);
+  $('#y').html(msg.pose.point.y);
+
+  drawStep(
+    msg.pose.point.x,
+    msg.pose.point.y,
+    msg.pose.theta,
+    msg.cycle,
+    msg.phase
+  );
+}
+
+function fetchExistingPointsAndLoadMap() {
+  $.get('/api/currentPath', function (data) {
+    if (data.length === 0) return;
+    currentPoints = data;
+    zoom = d3.zoom()
       .extent([[0, 0], [sizeX, sizeY]])
       .scaleExtent([-8, 8])
       .on("zoom", function () {
         d3.select('g').attr('transform', d3.event.transform);
       });
   d3.select('svg').call(zoom);
-}
-
-function startMissionLoop () {
-  if (mapping) {
-    $('#mapStatus').html('getting point...');
-    $.get('/api/local/info/mission', function (data) {
-      messageHandler(data);
-      setTimeout(startMissionLoop, updateEvery);
+  update();
     });
-  } else {
-    $('#mapStatus').html('stopped');
-  }
-}
-
-function messageHandler (msg) {
-  // msg is the object returned by dorita980.getMission() promise.
-  if (msg.cleanMissionStatus) {
-    // firmware version 2
-    msg.ok = msg.cleanMissionStatus;
-    msg.ok.pos = msg.pose;
-    msg.ok.batPct = msg.batPct;
-    if (msg.bin) { $('#bin').html(msg.bin.present); $('#binRow').show(); } else { $('#binRow').hide(); }
-    if (msg.detectedPad) { $('#detectedPad').html(msg.detectedPad); $('#detectedPadRow').show(); } else { $('#detectedPadRow').hide(); }
-    if (msg.mopReady) { $('#tankPresent').html(msg.mopReady.tankPresent); $('#tankPresentRow').show(); } else { $('#tankPresentRow').hide(); }
-    if (msg.mopReady) { $('#lidClosed').html(msg.mopReady.lidClosed); $('#lidClosedRow').show(); } else { $('#lidClosedRow').hide(); }
-    $('#nMssn').html(msg.ok.nMssn);
-  }
-  msg.ok.time = new Date().toISOString();
-  $('#mapStatus').html('drawing...');
-  $('#last').html(msg.ok.time);
-  $('#mission').html(msg.ok.mssnM);
-  $('#cycle').html(msg.ok.cycle);
-  $('#phase').html(msg.ok.phase);
-  $('#flags').html(msg.ok.flags);
-  $('#batPct').html(msg.ok.batPct);
-  $('#error').html(msg.ok.error);
-  $('#sqft').html(msg.ok.sqft);
-  $('#expireM').html(msg.ok.expireM);
-  $('#rechrgM').html(msg.ok.rechrgM);
-  $('#notReady').html(msg.ok.notReady);
-  $('#theta').html(msg.ok.pos.theta);
-  $('#x').html(msg.ok.pos.point.x);
-  $('#y').html(msg.ok.pos.point.y);
-
-  drawStep(
-    msg.ok.pos.point.x,
-    msg.ok.pos.point.y,
-    msg.ok.pos.theta,
-    msg.ok.cycle,
-    msg.ok.phase
-  );
-}
-
-function fetchExistingPoints() {
-  return JSON.parse(localStorage.getItem('points') || '[]');
 }
 
 function packagePoint(x, y) {

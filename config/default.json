@@ -3,12 +3,13 @@
   "blid": "",
   "password": "",
   "robotIP": "",
-  "firmwareVersion": 1,
+  "firmwareVersion": 3,
   "enableLocal": "yes",
-  "enableCloud": "yes",
+  "enableCloud": "no",
   "keepAlive": "yes",
   "basicAuthUser": null,
   "basicAuthPass": null,
   "sslKeyFile": null,
-  "sslCertFile": null
+  "sslCertFile": null,
+  "missionPollingRate": 500
 }

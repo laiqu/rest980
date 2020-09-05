@@ -40,3 +40,4 @@ jspm_packages
 
 devtest.js
 config/default.json
+db.json

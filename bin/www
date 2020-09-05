@@ -10,6 +10,15 @@ var http = require('http');
 var https = require('https');
 var fs = require('fs');
 var config = require('config');
+const low = require('lowdb');
+const FileSync = require('lowdb/adapters/FileSync');
+const adapter = new FileSync('db.json');
+const db = low(adapter);
+db.defaults({
+  missions: {},
+  isOnMission: false,
+  currentId: 0
+}).write();
 
 /**
  * Get port from environment and store in Express.
@@ -42,6 +51,9 @@ server.listen(port, "0.0.0.0");
 server.on('error', onError);
 server.on('listening', onListening);
 
+// Kickoff spammer. 
+startMissionLoop();
+
 /**
  * Normalize a port into a number, string, or false.
  */
@@ -65,7 +77,6 @@ function normalizePort (val) {
 /**
  * Event listener for HTTP server "error" event.
  */
-
 function onError (error) {
   if (error.syscall !== 'listen') {
     throw error;
@@ -100,4 +111,48 @@ function onListening () {
     ? 'pipe ' + addr
     : 'port ' + addr.port;
   debug('Listening on ' + bind + (server.key ? ' (HTTPS)' : ''));
+}
+
+function startMissionLoop () {
+  console.log('getting point...');
+  http.get('http://localhost:3000/api/local/info/mission', function (resp) {
+    let data = '';
+    resp.on('data', (chunk) => data += chunk);
+    resp.on('end', () => {
+      missionHandler(data);
+      setTimeout(startMissionLoop, config.missionPollingRate);
+    });
+    resp.on('error', console.error);
+  });
+}
+
+var isOnMission = db.get('isOnMission').value();
+// JS experts are dying inside.
+var currentId = db.get('currentId').value();
+if (currentId === undefined) currentId = 0;
+console.log(currentId);
+function missionHandler(data) {
+  strData = data;
+  data = JSON.parse(data);
+  console.log(data);
+  if (data.cleanMissionStatus.phase === 'charge') {
+    db.set('isOnMission', false).write();
+    isOnMission = false;
+  }
+  if (data.cleanMissionStatus.phase !== 'charge' && !isOnMission) {
+    db.update('currentId', (id) => id + 1).write();
+    currentId++;
+    isOnMission = db.set('isOnMission', true).write();
+    //db.set('missions.m' + currentId, []).write();
+  }
+  if (isOnMission) {
+    let mission = 'missions.m' + currentId;
+    console.log(mission);
+    let existing = db.get(mission).value();
+    if (existing === undefined) {
+      db.set(mission, [strData]).write();
+    } else if(existing[existing.length - 1] !== data) {
+      db.get(mission).push(strData).write();
+    }
+  }
 }

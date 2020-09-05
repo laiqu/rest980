@@ -4,6 +4,10 @@ var express = require('express');
 var router = express.Router();
 var config = require('config');
 var dorita980 = require('dorita980');
+const low = require('lowdb');
+const FileSync = require('lowdb/adapters/FileSync');
+const adapter = new FileSync('db.json');
+const db = low(adapter);
 
 var blid = process.env.BLID || config.blid;
 var password = process.env.PASSWORD || config.password;
@@ -48,6 +52,31 @@ router.get('/status/mission', function (req, res, next) {
 });
 */
 
+// my own
+
+router.get('/currentPath', (req, res) => {
+  db.read();
+  var currentId = db.get('currentId').value();
+  var msgs = db.get('missions.m' + currentId).value();
+  if (msgs === undefined) {
+    res.send('');
+  } else {
+    res.send(msgs.map((msg) => {
+      msg = JSON.parse(msg);
+      return [msg['pose'].point.x, msg.pose.point.y]
+    }));
+  }
+});
+router.get('/latestMission', (req, res) => {
+  db.read();
+  var currentId = db.get('currentId').value();
+  var msgs = db.get('missions.m' + currentId).value();
+  if (msgs !== undefined && msgs.length > 0) {
+    res.send(msgs[msgs.length - 1]);
+  } else {
+    res.send('');
+  }
+});
 // LOCAL:
 
 var missingInFirmw2 = ['setTime', 'setPtime'];
